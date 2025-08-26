@@ -66,9 +66,9 @@ def train(args):
     # Weight Decay & Scheduler 配置
     weight_decay = float(os.environ.get('WEIGHT_DECAY', '1e-4'))  # 默认 1e-4
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=weight_decay)
-    use_scheduler = os.environ.get('NO_SCHEDULER','0')!='1'
+    # 学习率调度默认关闭，如需开启：设置环境变量 USE_SCHEDULER=1 （可选参数：LR_PATIENCE, LR_FACTOR, MIN_LR）
+    use_scheduler = os.environ.get('USE_SCHEDULER','0')=='1'
     if use_scheduler:
-        # ReduceLROnPlateau 依据验证集 loss，patience 可用 LR_PATIENCE 指定
         lr_patience = int(os.environ.get('LR_PATIENCE','3'))
         factor = float(os.environ.get('LR_FACTOR','0.5'))
         min_lr = float(os.environ.get('MIN_LR','1e-6'))
@@ -135,8 +135,8 @@ def train(args):
             prev_lr = optimizer.param_groups[0]['lr']
             scheduler.step(va_loss)
             new_lr = optimizer.param_groups[0]['lr']
-            if new_lr != prev_lr:
-                print(f"    -> LR 降至 {new_lr:.6g} (val_loss plateau)")
+            if new_lr != prev_lr and debug:
+                print(f"[DEBUG] 调度器调整学习率 -> {new_lr:.6g}")
 
         if va_loss < best_val_loss - 1e-6:
             best_val_loss = va_loss
@@ -168,7 +168,7 @@ def _load_config():
     未提供的键使用默认值。
     """
     # patience 参数现已废弃，仅为兼容保留，不再触发早停
-    defaults = dict(epochs=100, batch_size=1024, dropout=0.5, lr=1e-3, out_dir='runs', patience=0)
+    defaults = dict(epochs=300, batch_size=1024, dropout=0.5, lr=1e-3, out_dir='runs', patience=0)
     # JSON 文件
     cfg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'train_config.json')
     if os.path.isfile(cfg_path):
