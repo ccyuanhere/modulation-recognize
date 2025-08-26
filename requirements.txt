@@ -1,0 +1,6 @@
+torch>=2.0.0
+numpy>=1.23
+matplotlib>=3.7
+scikit-learn>=1.1
+tqdm>=4.66
+pandas>=1.5
