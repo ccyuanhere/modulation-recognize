@@ -80,12 +80,10 @@ def train(args):
     os.makedirs(args.out_dir, exist_ok=True)
     best_val_loss = float('inf')
     best_state = None
-    patience = args.patience
-    wait = 0
+    # 早停机制已移除：继续完整训练所有 epoch，但仍保存验证集最优权重
     history = dict(train_loss=[], val_loss=[], train_acc=[], val_acc=[], lr=[])
-    disable_early = os.environ.get('NO_EARLY_STOP','0')=='1' or patience <= 0
-    if disable_early and os.environ.get('DEBUG','0')=='1':
-        print('[DEBUG] 早停已禁用 (NO_EARLY_STOP=1 或 patience<=0)')
+    if os.environ.get('DEBUG','0')=='1':
+        print('[DEBUG] 早停机制已在代码层面移除，将训练满设定 epochs')
 
     for epoch in range(1, args.epochs+1):
         model.train()
@@ -144,13 +142,8 @@ def train(args):
             best_val_loss = va_loss
             best_state = model.state_dict()
             torch.save(best_state, os.path.join(args.out_dir, 'conv.pt'))
-            wait = 0
-        else:
-            if not disable_early:
-                wait += 1
-                if wait >= patience:
-                    print(f"Early stopping at epoch {epoch}. Best val_loss={best_val_loss:.4f}")
-                    break
+            if debug:
+                print(f"[DEBUG] 更新最佳模型: val_loss={best_val_loss:.4f}")
 
         if debug and epoch == 3:
             # 观察第3轮后输出分布
@@ -174,7 +167,8 @@ def _load_config():
       {"epochs":120, "batch_size":512}
     未提供的键使用默认值。
     """
-    defaults = dict(epochs=100, batch_size=1024, dropout=0.5, lr=1e-3, out_dir='runs', patience=5)
+    # patience 参数现已废弃，仅为兼容保留，不再触发早停
+    defaults = dict(epochs=100, batch_size=1024, dropout=0.5, lr=1e-3, out_dir='runs', patience=0)
     # JSON 文件
     cfg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'train_config.json')
     if os.path.isfile(cfg_path):
@@ -205,7 +199,7 @@ def _load_config():
 def main():
     args = _load_config()
     print("使用训练配置:")
-    print(f"  epochs={args.epochs}, batch_size={args.batch_size}, dropout={args.dropout}, lr={args.lr}, patience={args.patience}, out_dir={args.out_dir}")
+    print(f"  epochs={args.epochs}, batch_size={args.batch_size}, dropout={args.dropout}, lr={args.lr}, patience(disabled)={args.patience}, out_dir={args.out_dir}")
     train(args)
 
 if __name__ == '__main__':
